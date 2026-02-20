@@ -62,6 +62,8 @@ def get_courses_data(subjects: list[str]) -> pd.DataFrame:
         convert_24h_datetime_to_ampm,
     )
 
+    table_df.columns = table_df.columns.str.capitalize()
+
     return table_df
 
 
