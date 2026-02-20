@@ -1,3 +1,4 @@
+from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
@@ -5,6 +6,23 @@ from prettytable import PrettyTable
 
 FINAL_EXAMS_URL = "https://gestiondocente.info.unlp.edu.ar/examenes-finales/"
 COURSES_URL = "https://gestiondocente.info.unlp.edu.ar/cursadas/"
+
+
+def convert_24h_datetime_to_ampm(datetime_str_24h: str) -> str:
+    """
+    Converts a 24-hour datetime string (DD/MM/YYYY HH:MM) to a 12-hour AM/PM string
+    (DD/MM/YYYY HH:MM AM/PM).
+    """
+    return datetime.strptime(datetime_str_24h.strip(), "%d/%m/%Y %H:%M").strftime(  # noqa: DTZ007
+        "%d/%m/%Y %I:%M %p",
+    )
+
+
+def convert_24h_time_to_ampm(time_str_24h: str) -> str:
+    """
+    Converts a 24-hour time string (HH:MM) to a 12-hour AM/PM string (HH:MM AM/PM).
+    """
+    return datetime.strptime(time_str_24h.strip(), "%H:%M").strftime("%I:%M %p")  # noqa: DTZ007
 
 
 def read_subjects_txt(file_path: str) -> list[str]:
@@ -38,7 +56,13 @@ def get_courses_data(subjects: list[str]) -> pd.DataFrame:
     """
     table_df = pd.read_html(COURSES_URL)[0]
     table_df = table_df.drop(columns=["Carreras"])
-    return table_df[table_df.iloc[:, 0].isin(subjects)]
+    table_df = table_df[table_df.iloc[:, 0].isin(subjects)]
+
+    table_df["Última modificación"] = table_df["Última modificación"].apply(
+        convert_24h_datetime_to_ampm,
+    )
+
+    return table_df
 
 
 def get_final_exams_data(subjects: list[str]) -> pd.DataFrame:
@@ -52,6 +76,20 @@ def get_final_exams_data(subjects: list[str]) -> pd.DataFrame:
         drop=True,
     )
     table_df["Última modificación"] = second_rows_content.reset_index(drop=True)
+
+    table_df["Hora"] = table_df["Hora"].str.replace("Hs.", "")
+    table_df["Hora"] = table_df["Hora"].apply(convert_24h_time_to_ampm)
+
+    table_df["Última modificación"] = table_df["Última modificación"].str.replace(
+        "Modificado por última vez el ",
+        "",
+    )
+
+    table_df["Día"] = table_df["Día"].str.capitalize()
+
+    table_df["Última modificación"] = table_df["Última modificación"].apply(
+        convert_24h_datetime_to_ampm,
+    )
 
     return table_df
 
