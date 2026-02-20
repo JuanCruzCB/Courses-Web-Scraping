@@ -1,5 +1,11 @@
+# Input files
 courses.md
-courses.txt
+course_subjects.txt
+final_exam_subjects.txt
+
+# Virtual environments
 venv/
 .venv/
+
+# VS Code settings
 .vscode/
