@@ -1,3 +1,4 @@
+import argparse
 from datetime import datetime
 from pathlib import Path
 
@@ -47,7 +48,7 @@ def make_pretty_table(df: pd.DataFrame) -> PrettyTable:
     return pt_table
 
 
-def get_courses_data(subjects: list[str]) -> pd.DataFrame:
+def get_courses_data(subjects: list[str], year: str | None) -> pd.DataFrame:
     """
     Receives a list of subject names and retrieves the courses data from the
     specified URL, which contains an HTML table. Then it filters the table
@@ -58,6 +59,10 @@ def get_courses_data(subjects: list[str]) -> pd.DataFrame:
     table_df = table_df.drop(columns=["Carreras"])
     table_df = table_df[table_df.iloc[:, 0].isin(subjects)]
 
+    if year is not None:
+        contains_filter = table_df["Última modificación"].str.contains(year, na=False)
+        table_df = table_df[contains_filter]
+
     table_df["Última modificación"] = table_df["Última modificación"].apply(
         convert_24h_datetime_to_ampm,
     )
@@ -67,7 +72,7 @@ def get_courses_data(subjects: list[str]) -> pd.DataFrame:
     return table_df
 
 
-def get_final_exams_data(subjects: list[str]) -> pd.DataFrame:
+def get_final_exams_data(subjects: list[str], year: str | None) -> pd.DataFrame:
     table_df = pd.read_html(FINAL_EXAMS_URL)[0]
     table_df = table_df.drop(columns=["Carreras"])
     table_df = table_df[table_df.iloc[:, 0].isin(subjects)]
@@ -93,15 +98,27 @@ def get_final_exams_data(subjects: list[str]) -> pd.DataFrame:
         convert_24h_datetime_to_ampm,
     )
 
+    if year is not None:
+        contains_filter = table_df["Última modificación"].str.contains(year, na=False)
+        table_df = table_df[contains_filter]
+
     return table_df
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--year",
+        type=str,
+        help="The year to filter the last update columnns with.",
+    )
+    args = parser.parse_args()
+
     course_subjects = read_subjects_txt("course_subjects.txt")
     final_exam_subjects = read_subjects_txt("final_exam_subjects.txt")
 
-    courses_data = get_courses_data(course_subjects)
-    final_exams_data = get_final_exams_data(final_exam_subjects)
+    courses_data = get_courses_data(course_subjects, args.year)
+    final_exams_data = get_final_exams_data(final_exam_subjects, args.year)
 
     courses_table = make_pretty_table(courses_data)
     final_exams_table = make_pretty_table(final_exams_data)
